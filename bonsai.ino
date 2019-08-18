@@ -7,6 +7,7 @@
 const unsigned int PUMP_HEATER_PIN = 1;
 const unsigned int SONAR_TRIGGER_PIN = 2;
 const unsigned int SONAR_ECHO_PIN = 3;
+const unsigned int WINTER_MODE_BTN = 4;
 
 // Other constants
 const unsigned int LOW_WATER_LVL = 5;
@@ -21,6 +22,7 @@ bool no_water = false;
 unsigned long last_measurement;
 int humidity;
 int temperature;
+bool winter_mode;
 
 SerLCD lcd; // Initialize the library with default I2C address 0x72
 DFRobot_SHT20 sht20;
@@ -39,26 +41,31 @@ void setup() {
   
   // SHT20 - Init 
   sht20.initSHT20();
-  
+
+  // Set summer or winter mode
+  pinMode(WINTER_MODE_BTN, INPUT_PULLUP);
+  winter_mode = digitalRead(WINTER_MODE_BTN) == LOW;
+
+  // Delay to make sure everything is init, then check temp and humidity.
   delay(100);
   checkTempHum();
 }
 
 
 void loop() {
-  
+
   unsigned long time_since = millis() - last_measurement;
-  if (time_since > MEASUREMENT_DELAY) {
+
+  if (winter_mode) {
+    // WINTER MODE HERE
+  } else if (time_since > MEASUREMENT_DELAY) {
     waterPlants();
-  } else {
-    // DISPLAY time_since / 60000 on the screen
   }
 }
 
 
 // Check temperature and humidity, then display on screen
-void checkTempHum()
-{
+void checkTempHum() {
   temperature = static_cast<int>(sht20.readTemperature());
   humidity = static_cast<int>(sht20.readHumidity());
   last_measurement = millis();
@@ -74,13 +81,12 @@ void checkTempHum()
 
 
 // Check if there is enough water and print negative result on screen
-bool enoughWater()
-{
+bool enoughWater() {
   if(no_water) { return false; }
   
   int sonar_ping = sonar.ping_cm();
-  if (sonar_ping >= NO_WATER_LVL)
-  {
+  
+  if (sonar_ping >= NO_WATER_LVL) {
     // Print on screen no water and change backlight to red
     lcd.setBacklight(255, 51, 0); //Set backlight to red
     lcd.setCursor(11, 0);
@@ -104,17 +110,15 @@ bool enoughWater()
 
 
 // Start the pump for ms
-void pumpWater()
-{
+void pumpWater() {
   digitalWrite(PUMP_HEATER_PIN, HIGH);
   delay(WATERING_TIME);
   digitalWrite(PUMP_HEATER_PIN, LOW);
 }
 
 
-// Check humidity and water plants
-void waterPlants()
-{
+// Check humidity and water plants, unless there is not enough water
+void waterPlants() {
   checkTempHum();
   
   while (enoughWater() && humidity < MIN_HUMIDITY) {
