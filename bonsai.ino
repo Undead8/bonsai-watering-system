@@ -5,17 +5,17 @@
 #include <PID_v1.h> // https://github.com/br3ttb/Arduino-PID-Library
 
 // Pin constants
-const unsigned int PUMP_HEATER_PIN = 1;
 const unsigned int SONAR_TRIGGER_PIN = 2;
 const unsigned int SONAR_ECHO_PIN = 3;
 const unsigned int WINTER_MODE_BTN = 4;
+const unsigned int PUMP_HEATER_PIN = 5;
 
 // Other customizable constants
 const unsigned int LOW_WATER_LVL = 5;
 const unsigned int NO_WATER_LVL = 6;
 const unsigned int WATERING_TIME = 5000;
 const unsigned int WATERING_PAUSE = 120000;
-const unsigned long MEASUREMENT_DELAY = 30000; // Delay between temp/humidity measures
+const unsigned long MEASUREMENT_DELAY = 15000; // Delay between temp/humidity measures
 const double MIN_HUMIDITY = 50.0;
 
 // PID variables and constants
@@ -46,6 +46,9 @@ void setup() {
   // LCD - Init
   Serial.println("Initializing LCD");
   lcd.begin(Wire); //Set up the LCD for I2C communication
+  lcd.command(','); //Send the comma to display the firmware version. Firmware will be displayed for 500ms
+  delay(500);
+  lcd.disableSystemMessages(); //SerLCD will not display the setting.
   lcd.setBacklight(0, 0, 0); //Set backlight to black
   lcd.setContrast(5); //Set contrast. Lower to 0 for higher contrast.
   lcd.clear(); //Clear the display - this moves the cursor to home position as well
@@ -106,14 +109,14 @@ void checkTempHum() {
   lcd.print(static_cast<int>(temperature));
   lcd.print("C");
   lcd.setCursor(0, 1);
-  lcd.print("Hum: ");
+  lcd.print("Humi: ");
   lcd.print(static_cast<int>(humidity));
   lcd.print("%");
 
   // Serial debug
   Serial.print("Temp: ");
   Serial.println(temperature);
-  Serial.print("Hum: ");
+  Serial.print("Humi: ");
   Serial.println(humidity);
 }
 
@@ -127,17 +130,22 @@ bool enoughWater() {
   // Ping the distance to the water
   int sonar_ping = sonar.ping_cm();
 
+  // Serial debug
+  Serial.print("Sonar distance: ");
+  Serial.print(sonar_ping);
+  Serial.println(" cm");
+
   // If the distance to the water is large, there is no more water
-  if (sonar_ping >= NO_WATER_LVL) {
+  if (sonar_ping > NO_WATER_LVL) {
 
     // Serial debug
     Serial.println("No water alert");
 
     // Print on screen no water and change backlight to red
-    lcd.setBacklight(255, 51, 0); //Set backlight to red
+    lcd.setBacklight(255, 51, 0); // Red
     lcd.setCursor(11, 0);
     lcd.print("NO");
-    lcd.setCursor(10, 1);
+    lcd.setCursor(11, 1);
     lcd.print("WATER");
 
     // Set no_water to true for future cycles
@@ -146,19 +154,34 @@ bool enoughWater() {
     return false;
     
   // If the distance to the water is medium, water is low
-  } else if (sonar_ping >= LOW_WATER_LVL) {
+  } else if (sonar_ping > LOW_WATER_LVL) {
 
     // Serial debug
     Serial.println("Low water alert");
 
     // Print on screen low water and change backlight to yellow
-    lcd.setBacklight(255, 255, 0); //Set backlight to yellow
+    lcd.setBacklight(255, 255, 0); // Yellow
     lcd.setCursor(11, 0);
     lcd.print("LOW");
-    lcd.setCursor(10, 1);
+    lcd.setCursor(11, 1);
     lcd.print("WATER");
     
     return true;
+
+  // If the sonar returns 0, there is a reading error
+  } else if (sonar_ping == 0) {
+
+    // Serial debug
+    Serial.println("Sonar error alert");
+
+    // Print on screen sonar error and change backlight to purple
+    lcd.setBacklight(255, 0, 255); // Purple
+    lcd.setCursor(11, 0);
+    lcd.print("SONAR");
+    lcd.setCursor(11, 1);
+    lcd.print("ERROR");
+    
+    return false;
 
   // If the distance to the water is low, there is enough water
   } else {
@@ -208,10 +231,10 @@ void heatSoil() {
   // Print on screen the heat as %
   unsigned int heat_percent = map(output, 0, 255, 0, 100);
   lcd.setCursor(11, 0);
-  lcd.print("HEAT");
-  lcd.setCursor(11, 1);
   lcd.print(heat_percent);
   lcd.print("%");
+  lcd.setCursor(11, 1);
+  lcd.print("HEAT");
 
   // Serial debug
   Serial.print("Heat PID output: ");
