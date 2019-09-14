@@ -30,6 +30,8 @@ bool no_water = false;
 unsigned long last_measurement = 0;
 double humidity, temperature;
 bool winter_mode;
+String status_message;
+unsigned long rgb_backlight;
 
 // Library objects
 SerLCD lcd; // Default I2C address 0x72
@@ -46,10 +48,10 @@ void setup() {
   // LCD - Init
   Serial.println("Initializing LCD");
   lcd.begin(Wire); //Set up the LCD for I2C communication
+  lcd.setBacklight(0, 0, 0); //Set backlight to black
   lcd.command(','); //Send the comma to display the firmware version. Firmware will be displayed for 500ms
   delay(500);
   lcd.disableSystemMessages(); //SerLCD will not display the setting.
-  lcd.setBacklight(0, 0, 0); //Set backlight to black
   lcd.setContrast(5); //Set contrast. Lower to 0 for higher contrast.
   lcd.clear(); //Clear the display - this moves the cursor to home position as well
   Serial.println("LCD initialized");
@@ -92,6 +94,8 @@ void loop() {
   } else {
     waterPlants();
   }
+
+  displayLCD();
 }
 
 
@@ -102,16 +106,6 @@ void checkTempHum() {
   temperature = sht20.readTemperature();
   humidity = sht20.readHumidity();
   last_measurement = millis();
-
-  // Display on LCD
-  lcd.setCursor(0, 0);
-  lcd.print("Temp: ");
-  lcd.print(static_cast<int>(temperature));
-  lcd.print("C");
-  lcd.setCursor(0, 1);
-  lcd.print("Humi: ");
-  lcd.print(static_cast<int>(humidity));
-  lcd.print("%");
 
   // Serial debug
   Serial.print("Temp: ");
@@ -141,12 +135,9 @@ bool enoughWater() {
     // Serial debug
     Serial.println("No water alert");
 
-    // Print on screen no water and change backlight to red
-    lcd.setBacklight(255, 51, 0); // Red
-    lcd.setCursor(11, 0);
-    lcd.print("NO");
-    lcd.setCursor(11, 1);
-    lcd.print("WATER");
+    // LCD variables
+    rgb_backlight = 0xff0000; // Red
+    status_message = "    NO WATER";
 
     // Set no_water to true for future cycles
     no_water = true;
@@ -159,12 +150,9 @@ bool enoughWater() {
     // Serial debug
     Serial.println("Low water alert");
 
-    // Print on screen low water and change backlight to yellow
-    lcd.setBacklight(255, 255, 0); // Yellow
-    lcd.setCursor(11, 0);
-    lcd.print("LOW");
-    lcd.setCursor(11, 1);
-    lcd.print("WATER");
+    // LCD variables
+    rgb_backlight = 0xffff00; // Yellow
+    status_message = "   LOW WATER";
     
     return true;
 
@@ -174,12 +162,9 @@ bool enoughWater() {
     // Serial debug
     Serial.println("Sonar error alert");
 
-    // Print on screen sonar error and change backlight to purple
-    lcd.setBacklight(255, 0, 255); // Purple
-    lcd.setCursor(11, 0);
-    lcd.print("SONAR");
-    lcd.setCursor(11, 1);
-    lcd.print("ERROR");
+    // LCD variables
+    rgb_backlight = 0xff00ff; // Purple
+    status_message = "  SONAR ERROR";
     
     return false;
 
@@ -202,6 +187,24 @@ void pumpWater() {
   delay(WATERING_TIME);
   digitalWrite(PUMP_HEATER_PIN, LOW);
   Serial.println("Pump off");
+}
+
+// Display information on LCD
+void displayLCD() {
+
+  lcd.clear();
+  lcd.setBacklight(rgb_backlight);
+  
+  // Display temperature and humidity
+  lcd.setCursor(4, 0);
+  lcd.print(static_cast<int>(temperature));
+  lcd.print("C ");
+  lcd.print(static_cast<int>(humidity));
+  lcd.print("%");
+
+  // Display status message
+  lcd.setCursor(0, 1);
+  lcd.print(status_message);
 }
 
 
@@ -228,13 +231,10 @@ void heatSoil() {
   myPID.Compute();
   analogWrite(PUMP_HEATER_PIN, output);
   
-  // Print on screen the heat as %
+  // Variables for LCD
   unsigned int heat_percent = map(output, 0, 255, 0, 100);
-  lcd.setCursor(11, 0);
-  lcd.print(heat_percent);
-  lcd.print("%");
-  lcd.setCursor(11, 1);
-  lcd.print("HEAT");
+  String heat_percent_string = String(heat_percent);
+  status_message = String("    " + heat_percent_string + "% HEAT");
 
   // Serial debug
   Serial.print("Heat PID output: ");
