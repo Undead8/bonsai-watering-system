@@ -45,17 +45,6 @@ void setup() {
   Serial.begin(9600);
   Wire.begin();
 
-  // LCD - Init
-  Serial.println("Initializing LCD");
-  lcd.begin(Wire); //Set up the LCD for I2C communication
-  lcd.setBacklight(0, 0, 0); //Set backlight to black
-  lcd.command(','); //Send the comma to display the firmware version. Firmware will be displayed for 500ms
-  delay(500);
-  lcd.disableSystemMessages(); //SerLCD will not display the setting.
-  lcd.setContrast(5); //Set contrast. Lower to 0 for higher contrast.
-  lcd.clear(); //Clear the display - this moves the cursor to home position as well
-  Serial.println("LCD initialized");
-
   // SHT20 - Init
   Serial.println("Initializing SHT20");
   sht20.initSHT20();
@@ -70,8 +59,22 @@ void setup() {
   Serial.print("Winter mode: ");
   Serial.println(winter_mode);
 
-  // Check and display temperature and humidity
-  checkTempHum();
+  // LCD - Init
+  Serial.println("Initializing LCD");
+  lcd.begin(Wire); //Set up the LCD for I2C communication
+  lcd.setFastBacklight(rgb_backlight);
+  lcd.clear(); //Clear the display - this moves the cursor to home position as well
+  lcd.print("  Robo-Bonsai!");
+  lcd.setCursor(0, 1);
+  lcd.print("   MODE ");
+  if (winter_mode) {
+    lcd.print("HIVER");
+    lcd.setFastBacklight(0x99ccff); // Blue
+  } else {
+    lcd.print("ETE");
+    lcd.setFastBacklight(0xccffcc); // Green
+  }
+  Serial.println("LCD initialized");
 
   // Activate PID if in winter mode
   if (winter_mode) {
@@ -137,7 +140,7 @@ bool enoughWater() {
 
     // LCD variables
     rgb_backlight = 0xff0000; // Red
-    status_message = "    NO WATER";
+    status_message = "  EAU EPUISEE";
 
     // Set no_water to true for future cycles
     no_water = true;
@@ -152,7 +155,7 @@ bool enoughWater() {
 
     // LCD variables
     rgb_backlight = 0xffff00; // Yellow
-    status_message = "   LOW WATER";
+    status_message = "   EAU BASSE";
     
     return true;
 
@@ -164,7 +167,7 @@ bool enoughWater() {
 
     // LCD variables
     rgb_backlight = 0xff00ff; // Purple
-    status_message = "  SONAR ERROR";
+    status_message = "     ERREUR";
     
     return false;
 
@@ -173,6 +176,10 @@ bool enoughWater() {
     
     // Serial debug
     Serial.println("Enough water");
+
+    // LCD variables
+    rgb_backlight = 0x000000; // Black
+    status_message = "     EAU OK";
     
     return true;
   }
@@ -193,14 +200,15 @@ void pumpWater() {
 void displayLCD() {
 
   lcd.clear();
-  lcd.setBacklight(rgb_backlight);
+  lcd.setFastBacklight(rgb_backlight);
   
   // Display temperature and humidity
-  lcd.setCursor(4, 0);
+  lcd.setCursor(1, 0);
   lcd.print(static_cast<int>(temperature));
-  lcd.print("C ");
+  lcd.print(char(223));
+  lcd.print("C  ");
   lcd.print(static_cast<int>(humidity));
-  lcd.print("%");
+  lcd.print("% Hum.");
 
   // Display status message
   lcd.setCursor(0, 1);
@@ -234,7 +242,7 @@ void heatSoil() {
   // Variables for LCD
   unsigned int heat_percent = map(output, 0, 255, 0, 100);
   String heat_percent_string = String(heat_percent);
-  status_message = String("    " + heat_percent_string + "% HEAT");
+  status_message = String(" CHAUFFAGE " + heat_percent_string + "%");
 
   // Serial debug
   Serial.print("Heat PID output: ");
