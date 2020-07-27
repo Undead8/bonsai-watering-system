@@ -5,18 +5,18 @@
 #include <PID_v1.h> // https://github.com/br3ttb/Arduino-PID-Library
 
 // Pin constants
-const unsigned int SONAR_TRIGGER_PIN = 2;
-const unsigned int SONAR_ECHO_PIN = 3;
+const unsigned int SONAR_TRIGGER_PIN = 6;
+const unsigned int SONAR_ECHO_PIN = 7;
 const unsigned int WINTER_MODE_BTN = 4;
 const unsigned int PUMP_HEATER_PIN = 5;
 
 // Other customizable constants
-const unsigned int LOW_WATER_LVL = 5;
-const unsigned int NO_WATER_LVL = 6;
-const unsigned int WATERING_TIME = 5000;
-const unsigned int WATERING_PAUSE = 120000;
-const unsigned long MEASUREMENT_DELAY = 15000; // Delay between temp/humidity measures
-const double MIN_HUMIDITY = 50.0;
+const unsigned int LOW_WATER_LVL = 13; // Distance between water surface and sonar that will trigger low water warning
+const unsigned int NO_WATER_LVL = 14; // Distance between water surface and sonar that will trigger no water warning and stop watering
+const unsigned int WATERING_TIME = 5000; // Duration in ms that the pump will be active when watering
+const unsigned int WATERING_PAUSE = 120000; // Minimum wait time between watering in ms during watering cycle
+const unsigned long MEASUREMENT_DELAY = 30000; // Delay in ms between temp/humidity measures
+const double MIN_HUMIDITY = 10.0; // Minimum humidity in % that can be reached before watering
 
 // PID variables and constants
 const double KP = 1.0;
@@ -27,11 +27,11 @@ double input, output, setpoint;
 
 // Other global variables
 bool no_water = false;
-unsigned long last_measurement = 0;
+unsigned long last_measurement;
 double humidity, temperature;
 bool winter_mode;
 String status_message;
-unsigned long rgb_backlight;
+unsigned long rgb_backlight = 0xffffff; // White
 
 // Library objects
 SerLCD lcd; // Default I2C address 0x72
@@ -53,6 +53,7 @@ void setup() {
   // Set pin modes
   pinMode(WINTER_MODE_BTN, INPUT_PULLUP);
   pinMode(PUMP_HEATER_PIN, OUTPUT);
+  digitalWrite(PUMP_HEATER_PIN, LOW);
 
   // Set summer or winter mode
   winter_mode = digitalRead(WINTER_MODE_BTN) == LOW;
@@ -62,6 +63,7 @@ void setup() {
   // LCD - Init
   Serial.println("Initializing LCD");
   lcd.begin(Wire); //Set up the LCD for I2C communication
+  lcd.setContrast(10);
   lcd.setFastBacklight(rgb_backlight);
   lcd.clear(); //Clear the display - this moves the cursor to home position as well
   lcd.print("  Robo-Bonsai!");
@@ -75,6 +77,11 @@ void setup() {
     lcd.setFastBacklight(0xccffcc); // Green
   }
   Serial.println("LCD initialized");
+
+  // Display temperature and humidity
+  delay(2000);
+  checkTempHum();
+  displayLCD();
 
   // Activate PID if in winter mode
   if (winter_mode) {
@@ -102,7 +109,7 @@ void loop() {
 }
 
 
-// Check temperature and humidity, then display on screen
+// Check temperature and humidity
 void checkTempHum() {
 
   // Use sht20 to read humidity and temperature, log the measurement time
@@ -118,7 +125,7 @@ void checkTempHum() {
 }
 
 
-// Check if there is enough water and print negative result on screen
+// Check if there is enough water
 bool enoughWater() {
 
   // If no_water was set to true on a previous cycle, return false
@@ -166,7 +173,7 @@ bool enoughWater() {
     Serial.println("Sonar error alert");
 
     // LCD variables
-    rgb_backlight = 0xff00ff; // Purple
+    rgb_backlight = 0xff00ff; // Pink
     status_message = "     ERREUR";
     
     return false;
@@ -178,7 +185,7 @@ bool enoughWater() {
     Serial.println("Enough water");
 
     // LCD variables
-    rgb_backlight = 0x000000; // Black
+    rgb_backlight = 0xffffff; // White
     status_message = "     EAU OK";
     
     return true;
