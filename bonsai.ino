@@ -63,25 +63,22 @@ void setup() {
   // LCD - Init
   Serial.println("Initializing LCD");
   lcd.begin(Wire); //Set up the LCD for I2C communication
-  lcd.setContrast(10);
+  delay(1000);
   lcd.setFastBacklight(rgb_backlight);
   lcd.clear(); //Clear the display - this moves the cursor to home position as well
-  lcd.print("  Robo-Bonsai!");
+  lcd.print("  ROBO-BONSAI");
   lcd.setCursor(0, 1);
   lcd.print("   MODE ");
   if (winter_mode) {
     lcd.print("HIVER");
-    lcd.setFastBacklight(0x99ccff); // Blue
+    rgb_backlight = 0x99ccff; // Blue
+    lcd.setFastBacklight(rgb_backlight);
   } else {
     lcd.print("ETE");
-    lcd.setFastBacklight(0xccffcc); // Green
+    rgb_backlight = 0xccffcc; // Green
+    lcd.setFastBacklight(rgb_backlight);
   }
   Serial.println("LCD initialized");
-
-  // Display temperature and humidity
-  delay(2000);
-  checkTempHum();
-  displayLCD();
 
   // Activate PID if in winter mode
   if (winter_mode) {
@@ -89,6 +86,15 @@ void setup() {
     setpoint = TEMP_TARGET;
     myPID.SetMode(AUTOMATIC);
   }
+
+  // Perform first cycle
+  delay(5000);
+  if (winter_mode) {
+    heatSoil();
+  } else {
+    waterPlants();
+  }
+  displayLCD();
 
   Serial.println("Setup completed");
 }
@@ -104,7 +110,6 @@ void loop() {
   } else {
     waterPlants();
   }
-
   displayLCD();
 }
 
@@ -222,6 +227,12 @@ void displayLCD() {
   lcd.print(status_message);
 }
 
+// RGB to hex converter
+unsigned long createRGB(int r, int g, int b)
+{   
+    return ((r & 0xff) << 16) + ((g & 0xff) << 8) + (b & 0xff);
+}
+
 
 // Check humidity and water plants if needed and if there is enough water
 void waterPlants() {
@@ -247,9 +258,10 @@ void heatSoil() {
   analogWrite(PUMP_HEATER_PIN, output);
   
   // Variables for LCD
+  unsigned long rgb_output = createRGB(255, 255 - output, 255 - output);
+  rgb_backlight = (rgb_output); // From white to red depending of output
   unsigned int heat_percent = map(output, 0, 255, 0, 100);
-  String heat_percent_string = String(heat_percent);
-  status_message = String(" CHAUFFAGE " + heat_percent_string + "%");
+  status_message = String(" CHAUFFAGE " + String(heat_percent) + "%");
 
   // Serial debug
   Serial.print("Heat PID output: ");
