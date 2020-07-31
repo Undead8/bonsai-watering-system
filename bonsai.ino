@@ -11,8 +11,9 @@ const unsigned int WINTER_MODE_BTN = 4;
 const unsigned int PUMP_HEATER_PIN = 5;
 
 // Other customizable constants
-const unsigned int LOW_WATER_LVL = 13; // Distance between water surface and sonar that will trigger low water warning
-const unsigned int NO_WATER_LVL = 14; // Distance between water surface and sonar that will trigger no water warning and stop watering
+const unsigned int FULL_WATER_LVL = 285; // Sonar ping in uS (57 uS = 1 cm) for full water
+const unsigned int LOW_WATER_LVL = 741; // Sonar ping in uS (57 uS = 1 cm) for low water warning
+const unsigned int NO_WATER_LVL = 798; // Sonar ping in uS (57 uS = 1 cm) for no water
 const unsigned int WATERING_TIME = 5000; // Duration in ms that the pump will be active when watering
 const unsigned int WATERING_PAUSE = 120000; // Minimum wait time between watering in ms during watering cycle
 const unsigned long MEASUREMENT_DELAY = 30000; // Delay in ms between temp/humidity measures
@@ -137,12 +138,16 @@ bool enoughWater() {
   if (no_water) { return false; }
 
   // Ping the distance to the water
-  int sonar_ping = sonar.ping_cm();
+  int sonar_ping = sonar.ping();
 
   // Serial debug
   Serial.print("Sonar distance: ");
   Serial.print(sonar_ping);
-  Serial.println(" cm");
+  Serial.println(" uS");
+
+  // Status message for water lvl
+  unsigned int water_percent = map(sonar_ping, NO_WATER_LVL, FULL_WATER_LVL, 0, 100);
+  status_message = String("    EAU " + String(water_percent) + "%");
 
   // If the distance to the water is large, there is no more water
   if (sonar_ping > NO_WATER_LVL) {
@@ -152,7 +157,6 @@ bool enoughWater() {
 
     // LCD variables
     rgb_backlight = 0xff0000; // Red
-    status_message = "  EAU EPUISEE";
 
     // Set no_water to true for future cycles
     no_water = true;
@@ -167,7 +171,6 @@ bool enoughWater() {
 
     // LCD variables
     rgb_backlight = 0xffff00; // Yellow
-    status_message = "   EAU BASSE";
     
     return true;
 
@@ -191,7 +194,6 @@ bool enoughWater() {
 
     // LCD variables
     rgb_backlight = 0xffffff; // White
-    status_message = "     EAU OK";
     
     return true;
   }
