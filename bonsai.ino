@@ -1,6 +1,7 @@
 #include <Wire.h>
 #include <SerLCD.h> // http://librarymanager/All#SparkFun_SerLCD
 #include <DFRobot_SHT20.h> // https://github.com/DFRobot/DFRobot_SHT20
+#include <I2CSoilMoistureSensor.h> // https://github.com/Apollon77/I2CSoilMoistureSensor
 #include <NewPing.h> // https://bitbucket.org/teckel12/arduino-new-ping/wiki/Home
 #include <PID_v1.h> // https://github.com/br3ttb/Arduino-PID-Library
 
@@ -36,6 +37,7 @@ unsigned long rgb_backlight = 0xffffff; // White
 // Library objects
 SerLCD lcd; // Default I2C address 0x72
 DFRobot_SHT20 sht20; // Default I2C address is 0x40
+I2CSoilMoistureSensor sensor; // Default I2C address is 0x20
 NewPing sonar(SONAR_TRIGGER_PIN, SONAR_ECHO_PIN, 100);
 PID myPID(&input, &output, &setpoint, KP, KI, KD, DIRECT);
 
@@ -44,11 +46,6 @@ void setup() {
   
   Serial.begin(9600);
   Wire.begin();
-
-  // SHT20 - Init
-  Serial.println("Initializing SHT20");
-  sht20.initSHT20();
-  Serial.println("SHT20 initialized");
 
   // Set pin modes
   pinMode(WINTER_MODE_BTN, INPUT_PULLUP);
@@ -80,15 +77,31 @@ void setup() {
   }
   Serial.println("LCD initialized");
 
-  // Activate PID if in winter mode
+  // Sensors/PID - Init for winter and summer mode
   if (winter_mode) {
+
+    // Activate PID
     input = temperature;
     setpoint = TEMP_TARGET;
     myPID.SetMode(AUTOMATIC);
+
+    // SHT20 - Init
+    Serial.println("Initializing SHT20");
+    sht20.initSHT20();
+    delay(1000);
+    Serial.println("SHT20 initialized");
+    
+  } else {
+    
+    // I2CSoilMoisture - Init
+    Serial.println("Initializing I2CSoilMoisture");
+    sensor.begin();
+    delay(1000);
+    Serial.println("I2CSoilMoisture initialized");
   }
 
   // Perform first cycle
-  delay(5000);
+  delay(3000);
   if (winter_mode) {
     heatSoil();
   } else {
@@ -117,9 +130,23 @@ void loop() {
 // Check temperature and humidity
 void checkTempHum() {
 
-  // Use sht20 to read humidity and temperature, log the measurement time
-  temperature = sht20.readTemperature();
-  humidity = sht20.readHumidity();
+  if (winter_mode) {
+    
+    // Use sht20 to measure temperature and humidity
+    temperature = sht20.readTemperature(); // In Celsius
+    humidity = sht20.readHumidity(); // In percent
+    
+  } else {
+    
+    // Use I2CSoilMoisture to measure temperature and humidity
+    sensor.getCapacitance();
+    while (sensor.isBusy()) delay(50);
+    sensor.getTemperature();
+    while (sensor.isBusy()) delay(50);
+    humidity = sensor.getCapacitance(); // In Capacitance
+    temperature = sensor.getTemperature() / 10.0; // In Celsius 
+  }
+  
   last_measurement = millis();
 
   // Serial debug
@@ -215,7 +242,7 @@ void displayLCD() {
   lcd.print(char(223));
   lcd.print("C  ");
   lcd.print(static_cast<int>(humidity));
-  lcd.print("% Hum.");
+  lcd.print(" HUMI");
 
   // Display status message
   lcd.setCursor(0, 1);
