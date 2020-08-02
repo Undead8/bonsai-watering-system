@@ -12,11 +12,11 @@ const unsigned int PUMP_HEATER_PIN = 5;
 
 // Other customizable constants
 const unsigned int FULL_WATER_LVL = 285; // Sonar ping in uS (57 uS = 1 cm) for full water
-const unsigned int LOW_WATER_LVL = 741; // Sonar ping in uS (57 uS = 1 cm) for low water warning
-const unsigned int NO_WATER_LVL = 798; // Sonar ping in uS (57 uS = 1 cm) for no water
+const unsigned int LOW_WATER_LVL = 627; // Sonar ping in uS (57 uS = 1 cm) for low water warning
+const unsigned int NO_WATER_LVL = 741; // Sonar ping in uS (57 uS = 1 cm) for no water
 const unsigned int WATERING_TIME = 5000; // Duration in ms that the pump will be active when watering
 const unsigned int WATERING_PAUSE = 120000; // Minimum wait time between watering in ms during watering cycle
-const unsigned long MEASUREMENT_DELAY = 30000; // Delay in ms between temp/humidity measures
+const unsigned long MEASUREMENT_DELAY = 300000; // Delay in ms between temp/humidity measures
 const double MIN_HUMIDITY = 10.0; // Minimum humidity in % that can be reached before watering
 
 // PID variables and constants
@@ -27,7 +27,6 @@ const double TEMP_TARGET = 0;
 double input, output, setpoint;
 
 // Other global variables
-bool no_water = false;
 unsigned long last_measurement;
 double humidity, temperature;
 bool winter_mode;
@@ -134,9 +133,6 @@ void checkTempHum() {
 // Check if there is enough water
 bool enoughWater() {
 
-  // If no_water was set to true on a previous cycle, return false
-  if (no_water) { return false; }
-
   // Ping the distance to the water
   int sonar_ping = sonar.ping();
 
@@ -157,9 +153,6 @@ bool enoughWater() {
 
     // LCD variables
     rgb_backlight = 0xff0000; // Red
-
-    // Set no_water to true for future cycles
-    no_water = true;
     
     return false;
     
