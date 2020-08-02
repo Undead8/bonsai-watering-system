@@ -18,7 +18,7 @@ const unsigned int NO_WATER_LVL = 741; // Sonar ping in uS (57 uS = 1 cm) for no
 const unsigned int WATERING_TIME = 5000; // Duration in ms that the pump will be active when watering
 const unsigned int WATERING_PAUSE = 120000; // Minimum wait time between watering in ms during watering cycle
 const unsigned long MEASUREMENT_DELAY = 300000; // Delay in ms between temp/humidity measures
-const double MIN_HUMIDITY = 10.0; // Minimum humidity in % that can be reached before watering
+const double MIN_HUMIDITY = 213.0; // Minimum humidity in Capacitance that can be reached before watering
 
 // PID variables and constants
 const double KP = 1.0;
