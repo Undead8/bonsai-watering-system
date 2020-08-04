@@ -10,13 +10,13 @@ const unsigned int MANUAL_MODE_BTN = 4;
 const unsigned int PUMP_PIN = 5;
 
 // Customizable constants
-const unsigned int FULL_WATER_LVL = 285; // Sonar ping in uS (57 uS = 1 cm) for full water
-const unsigned int LOW_WATER_LVL = 627; // Sonar ping in uS (57 uS = 1 cm) for low water warning
-const unsigned int NO_WATER_LVL = 741; // Sonar ping in uS (57 uS = 1 cm) for no water
+const unsigned int FULL_WATER_LVL = 376; // Sonar ping in uS (57 uS = 1 cm) for full water
+const unsigned int LOW_WATER_LVL = 656; // Sonar ping in uS (57 uS = 1 cm) for low water warning
+const unsigned int NO_WATER_LVL = 770; // Sonar ping in uS (57 uS = 1 cm) for no water
 const unsigned int WATERING_TIME = 5000; // Duration in ms that the pump will be active when watering
-const unsigned int WATERING_DELAY = 120000; // Duration in ms that the pump will be active when watering
+const unsigned int WATERING_DELAY = 120000; // Duration in ms before watering another time
 const unsigned long MEASUREMENT_DELAY = 300000; // Delay in ms between temp/humidity measures
-const double MIN_HUMIDITY = 213.0; // Minimum humidity in Capacitance that can be reached before watering
+const double MIN_HUMIDITY = 300.0; // Minimum humidity in Capacitance that can be reached before watering
 
 // Global variables
 unsigned long last_measurement;
@@ -60,13 +60,19 @@ bool enoughWater() {
   // Ping the distance to the water
   int sonar_ping = sonar.ping();
 
+  // Try again once if error
+  if (sonar_ping == 0) {
+    delay(50);
+    sonar_ping = sonar.ping();
+  }
+
   // Serial debug
   Serial.print("Sonar distance: ");
   Serial.print(sonar_ping);
   Serial.println(" uS");
 
   // Status message for water lvl
-  unsigned int water_percent = map(sonar_ping, NO_WATER_LVL, FULL_WATER_LVL, 0, 100);
+  unsigned int water_percent = map(min(sonar_ping, NO_WATER_LVL), NO_WATER_LVL, FULL_WATER_LVL, 0, 100);
   status_message = String("    EAU " + String(water_percent) + "%");
 
   // If the distance to the water is large, there is no more water
