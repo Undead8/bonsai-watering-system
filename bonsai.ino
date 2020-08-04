@@ -43,12 +43,6 @@ bool checkTempHum() {
   temperature = sensor.getTemperature() / 10.0; // In Celsius   
   last_measurement = millis();
 
-  // Serial debug
-  Serial.print("Temp: ");
-  Serial.println(temperature);
-  Serial.print("Humi: ");
-  Serial.println(humidity);
-
   // Return true if humidity is low
   return humidity < MIN_HUMIDITY;
 }
@@ -66,20 +60,12 @@ bool enoughWater() {
     sonar_ping = sonar.ping();
   }
 
-  // Serial debug
-  Serial.print("Sonar distance: ");
-  Serial.print(sonar_ping);
-  Serial.println(" uS");
-
   // Status message for water lvl
-  unsigned int water_percent = map(min(sonar_ping, NO_WATER_LVL), NO_WATER_LVL, FULL_WATER_LVL, 0, 100);
+  int water_percent = map(min(sonar_ping, NO_WATER_LVL), NO_WATER_LVL, FULL_WATER_LVL, 0, 100);
   status_message = String("    EAU " + String(water_percent) + "%");
 
   // If the distance to the water is large, there is no more water
   if (sonar_ping > NO_WATER_LVL) {
-
-    // Serial debug
-    Serial.println("No water alert");
 
     // LCD variables
     rgb_backlight = 0xff0000; // Red
@@ -89,9 +75,6 @@ bool enoughWater() {
   // If the distance to the water is medium, water is low
   } else if (sonar_ping > LOW_WATER_LVL) {
 
-    // Serial debug
-    Serial.println("Low water alert");
-
     // LCD variables
     rgb_backlight = 0xffff00; // Yellow
     
@@ -99,9 +82,6 @@ bool enoughWater() {
 
   // If the sonar returns 0, there is a reading error
   } else if (sonar_ping == 0) {
-
-    // Serial debug
-    Serial.println("Sonar error alert");
 
     // LCD variables
     rgb_backlight = 0xff00ff; // Pink
@@ -112,9 +92,6 @@ bool enoughWater() {
   // If the distance to the water is low, there is enough water
   } else {
     
-    // Serial debug
-    Serial.println("Enough water");
-
     return true;
   }
 }
@@ -124,10 +101,8 @@ bool enoughWater() {
 void pumpWater() {
 
   digitalWrite(PUMP_PIN, HIGH);
-  Serial.println("Pump on");
   delay(WATERING_TIME);
   digitalWrite(PUMP_PIN, LOW);
-  Serial.println("Pump off");
 }
 
 
@@ -153,7 +128,6 @@ void displayLCD() {
 
 void setup() {
   
-  Serial.begin(9600);
   Wire.begin();
 
   // Set pin modes
@@ -163,11 +137,8 @@ void setup() {
 
   // Set auto or manual mode
   manual_mode = digitalRead(MANUAL_MODE_BTN) == LOW;
-  Serial.print("Manual mode: ");
-  Serial.println(manual_mode);
 
   // LCD - Init
-  Serial.println("Initializing LCD");
   lcd.begin(Wire);
   delay(1000);
   lcd.clear();
@@ -183,18 +154,13 @@ void setup() {
     rgb_backlight = 0xccffcc; // Green
     lcd.setFastBacklight(rgb_backlight);
   }
-  Serial.println("LCD initialized");
   
   // I2CSoilMoisture - Init
-  Serial.println("Initializing I2CSoilMoisture");
   sensor.begin();
   delay(1000);
-  Serial.println("I2CSoilMoisture initialized");  
 
   // Delay for splash screen
   delay(1000);
-
-  Serial.println("Setup completed");
 }
 
 
