@@ -3,21 +3,22 @@
 #include <I2CSoilMoistureSensor.h> // https://github.com/Apollon77/I2CSoilMoistureSensor
 #include <NewPing.h> // https://bitbucket.org/teckel12/arduino-new-ping/wiki/Home
 
-// Pin constants
+// Customizable pin constants
 const unsigned int SONAR_TRIGGER_PIN = 6;
 const unsigned int SONAR_ECHO_PIN = 7;
 const unsigned int MANUAL_MODE_BTN = 4;
-const unsigned int PUMP_HEATER_PIN = 5;
+const unsigned int PUMP_PIN = 5;
 
-// Other customizable constants
+// Customizable constants
 const unsigned int FULL_WATER_LVL = 285; // Sonar ping in uS (57 uS = 1 cm) for full water
 const unsigned int LOW_WATER_LVL = 627; // Sonar ping in uS (57 uS = 1 cm) for low water warning
 const unsigned int NO_WATER_LVL = 741; // Sonar ping in uS (57 uS = 1 cm) for no water
 const unsigned int WATERING_TIME = 5000; // Duration in ms that the pump will be active when watering
+const unsigned int WATERING_DELAY = 120000; // Duration in ms that the pump will be active when watering
 const unsigned long MEASUREMENT_DELAY = 300000; // Delay in ms between temp/humidity measures
 const double MIN_HUMIDITY = 213.0; // Minimum humidity in Capacitance that can be reached before watering
 
-// Other global variables
+// Global variables
 unsigned long last_measurement;
 double humidity, temperature;
 bool manual_mode;
@@ -25,13 +26,13 @@ String status_message;
 unsigned long rgb_backlight = 0xffffff; // White
 
 // Library objects
-SerLCD lcd; // Default I2C address 0x72
+SerLCD lcd; // Default I2C address is 0x72
 I2CSoilMoistureSensor sensor; // Default I2C address is 0x20
 NewPing sonar(SONAR_TRIGGER_PIN, SONAR_ECHO_PIN, 100);
 
 
-// Check temperature and humidity
-void checkTempHum() {
+// Check temperature and humidity, return true if low humidity
+bool checkTempHum() {
     
   // Use I2CSoilMoisture to measure temperature and humidity
   sensor.getCapacitance();
@@ -47,6 +48,9 @@ void checkTempHum() {
   Serial.println(temperature);
   Serial.print("Humi: ");
   Serial.println(humidity);
+
+  // Return true if humidity is low
+  return humidity < MIN_HUMIDITY;
 }
 
 
@@ -113,17 +117,11 @@ bool enoughWater() {
 // Start the pump for WATERING_TIME duration
 void pumpWater() {
 
-  // Pump water for WATERING_TIME ms
-  digitalWrite(PUMP_HEATER_PIN, HIGH);
+  digitalWrite(PUMP_PIN, HIGH);
   Serial.println("Pump on");
   delay(WATERING_TIME);
-  digitalWrite(PUMP_HEATER_PIN, LOW);
+  digitalWrite(PUMP_PIN, LOW);
   Serial.println("Pump off");
-
-  // Update temp, humidity and water lvl.
-  checkTempHum();
-  enoughWater();
-  displayLCD();
 }
 
 
@@ -154,8 +152,8 @@ void setup() {
 
   // Set pin modes
   pinMode(MANUAL_MODE_BTN, INPUT_PULLUP);
-  pinMode(PUMP_HEATER_PIN, OUTPUT);
-  digitalWrite(PUMP_HEATER_PIN, LOW);
+  pinMode(PUMP_PIN, OUTPUT);
+  digitalWrite(PUMP_PIN, LOW);
 
   // Set auto or manual mode
   manual_mode = digitalRead(MANUAL_MODE_BTN) == LOW;
@@ -188,12 +186,7 @@ void setup() {
   Serial.println("I2CSoilMoisture initialized");  
 
   // Delay for splash screen
-  delay(2000);
-
-  // Check temp, humidity and water and display on LCD
-  checkTempHum();
-  enoughWater();
-  displayLCD();
+  delay(1000);
 
   Serial.println("Setup completed");
 }
@@ -201,24 +194,19 @@ void setup() {
 
 void loop() {
 
-  if (manual_mode) {
-
-    // Pump water non-stop until there is no more water
-    while (enoughWater()) { pumpWater(); }
-
-    // When there is no water, update temp and humidity every MEASUREMENT_DELAY
-    while ((millis() - last_measurement) < MEASUREMENT_DELAY) { delay(1); }
-    checkTempHum();
+  // Manual mode loop
+  while (manual_mode && enoughWater()) { pumpWater(); }
+ 
+  // Auto mode loop
+  while (checkTempHum() & enoughWater()) { 
     displayLCD();
-       
-  } else {
-    
-    // Update temp and humidity every MEASUREMENT_DELAY
-    while ((millis() - last_measurement) < MEASUREMENT_DELAY) { delay(1); }
-    checkTempHum();
-    displayLCD();
-
-    // Pump water once if there is water and humidity is low
-    if (enoughWater() && humidity < MIN_HUMIDITY) { pumpWater(); } 
+    pumpWater();
+    delay(WATERING_DELAY);
   }
+
+  // Display temp, humidity and water lvl on LCD
+  displayLCD();
+
+  // Put on stand-by
+  while ((millis() - last_measurement) < MEASUREMENT_DELAY) { delay(1); }
 }
