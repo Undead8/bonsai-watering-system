@@ -13,10 +13,10 @@ const unsigned int PUMP_PIN = 5;
 const unsigned int FULL_WATER_LVL = 376; // Sonar ping in uS (57 uS = 1 cm) for full water
 const unsigned int LOW_WATER_LVL = 656; // Sonar ping in uS (57 uS = 1 cm) for low water warning
 const unsigned int NO_WATER_LVL = 770; // Sonar ping in uS (57 uS = 1 cm) for no water
-const unsigned int WATERING_TIME = 5000; // Duration in ms that the pump will be active when watering
+const unsigned int WATERING_TIME = 7000; // Duration in ms that the pump will be active when watering
 const unsigned int WATERING_DELAY = 120000; // Duration in ms before watering another time
-const unsigned long MEASUREMENT_DELAY = 300000; // Delay in ms between temp/humidity measures
-const double MIN_HUMIDITY = 300.0; // Minimum humidity in Capacitance that can be reached before watering
+const unsigned long MEASUREMENT_DELAY = 600000; // Delay in ms between temp/humidity measures
+const double MIN_HUMIDITY = 295.0; // Minimum humidity in Capacitance that can be reached before watering
 
 // Global variables
 unsigned long last_measurement;
@@ -36,9 +36,9 @@ bool checkTempHum() {
     
   // Use I2CSoilMoisture to measure temperature and humidity
   sensor.getCapacitance();
-  while (sensor.isBusy()) delay(50);
+  while (sensor.isBusy()) { delay(50); }
   sensor.getTemperature();
-  while (sensor.isBusy()) delay(50);
+  while (sensor.isBusy()) { delay(50); }
   humidity = sensor.getCapacitance(); // In Capacitance
   temperature = sensor.getTemperature() / 10.0; // In Celsius   
   last_measurement = millis();
@@ -138,7 +138,7 @@ void setup() {
   // Set auto or manual mode
   manual_mode = digitalRead(MANUAL_MODE_BTN) == LOW;
 
-  // LCD - Init
+  // LCD - Init and splash screen
   lcd.begin(Wire);
   delay(1000);
   lcd.clear();
