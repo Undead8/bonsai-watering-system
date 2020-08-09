@@ -10,10 +10,10 @@ const unsigned int MANUAL_MODE_BTN = 4;
 const unsigned int PUMP_PIN = 5;
 
 // Customizable constants
-const unsigned int FULL_WATER_LVL = 376; // Sonar ping in uS (57 uS = 1 cm) for full water
+const unsigned int FULL_WATER_LVL = 415; // Sonar ping in uS (57 uS = 1 cm) for full water
 const unsigned int LOW_WATER_LVL = 656; // Sonar ping in uS (57 uS = 1 cm) for low water warning
 const unsigned int NO_WATER_LVL = 770; // Sonar ping in uS (57 uS = 1 cm) for no water
-const unsigned int WATERING_TIME = 7000; // Duration in ms that the pump will be active when watering
+const unsigned int WATERING_TIME = 15000; // Duration in ms that the pump will be active when watering
 const unsigned int WATERING_DELAY = 120000; // Duration in ms before watering another time
 const unsigned long MEASUREMENT_DELAY = 600000; // Delay in ms between temp/humidity measures
 const double MIN_HUMIDITY = 295.0; // Minimum humidity in Capacitance that can be reached before watering
@@ -54,9 +54,9 @@ bool enoughWater() {
   // Ping the distance to the water
   int sonar_ping = sonar.ping();
 
-  // Try again once if error
-  if (sonar_ping == 0) {
-    delay(50);
+  // Try again up to 4 times if error
+  for (int i = 0; sonar_ping == 0 && i < 4; i++) {
+    delay(250);
     sonar_ping = sonar.ping();
   }
 
@@ -91,7 +91,9 @@ bool enoughWater() {
 
   // If the distance to the water is low, there is enough water
   } else {
-    
+
+    // LCD variables
+    rgb_backlight = 0xffffff; // White
     return true;
   }
 }
