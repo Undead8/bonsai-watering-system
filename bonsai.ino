@@ -146,13 +146,12 @@ void setup() {
   lcd.clear();
   lcd.print("  ROBO-BONSAI");
   lcd.setCursor(0, 1);
-  lcd.print("   MODE ");
   if (manual_mode) {
-    lcd.print("MANUEL");
+    lcd.print("  MODE MANUEL");
     rgb_backlight = 0x99ccff; // Blue
     lcd.setFastBacklight(rgb_backlight);
   } else {
-    lcd.print("AUTO");
+    lcd.print("   MODE AUTO");
     rgb_backlight = 0xccffcc; // Green
     lcd.setFastBacklight(rgb_backlight);
   }
