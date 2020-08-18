@@ -11,7 +11,7 @@ const unsigned int PUMP_PIN = 5;
 
 // Customizable constants
 const unsigned int FULL_WATER_LVL = 415; // Sonar ping in uS (57 uS = 1 cm) for full water
-const unsigned int LOW_WATER_LVL = 656; // Sonar ping in uS (57 uS = 1 cm) for low water warning
+const unsigned int LOW_WATER_LVL = 700; // Sonar ping in uS (57 uS = 1 cm) for low water warning
 const unsigned int NO_WATER_LVL = 770; // Sonar ping in uS (57 uS = 1 cm) for no water
 const unsigned int WATERING_TIME = 15000; // Duration in ms that the pump will be active when watering
 const unsigned int WATERING_DELAY = 120000; // Duration in ms before watering another time
@@ -60,7 +60,7 @@ bool enoughWater() {
     sonar_ping = sonar.ping();
   }
 
-  // Status message for water lvl
+  // Status message for LCD
   int water_percent = map(min(sonar_ping, NO_WATER_LVL), NO_WATER_LVL, FULL_WATER_LVL, 0, 100);
   status_message = String("    EAU " + String(water_percent) + "%");
 
@@ -101,7 +101,6 @@ bool enoughWater() {
 
 // Start the pump for WATERING_TIME duration
 void pumpWater() {
-
   digitalWrite(PUMP_PIN, HIGH);
   delay(WATERING_TIME);
   digitalWrite(PUMP_PIN, LOW);
