@@ -139,9 +139,11 @@ void setup() {
   // Set auto or manual mode
   manual_mode = digitalRead(MANUAL_MODE_BTN) == LOW;
 
+  // Delay before begin
+  delay(1000);
+
   // LCD - Init and splash screen
   lcd.begin(Wire);
-  delay(1000);
   lcd.clear();
   lcd.print("  ROBO-BONSAI");
   lcd.setCursor(0, 1);
@@ -157,10 +159,9 @@ void setup() {
   
   // I2CSoilMoisture - Init
   sensor.begin();
-  delay(1000);
 
   // Delay for splash screen
-  delay(1000);
+  delay(2000);
 }
 
 
