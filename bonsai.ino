@@ -8,6 +8,7 @@ const unsigned int SONAR_TRIGGER_PIN = 6;
 const unsigned int SONAR_ECHO_PIN = 7;
 const unsigned int MANUAL_MODE_BTN = 4;
 const unsigned int PUMP_PIN = 5;
+const unsigned int POTENTIOMETER_PIN = 21;
 
 // Customizable constants
 const unsigned int FULL_WATER_LVL = 415; // Sonar ping in uS (57 uS = 1 cm) for full water
@@ -16,14 +17,12 @@ const unsigned int NO_WATER_LVL = 770; // Sonar ping in uS (57 uS = 1 cm) for no
 const unsigned int WATERING_TIME = 15000; // Duration in ms that the pump will be active when watering
 const unsigned int WATERING_DELAY = 120000; // Duration in ms before watering another time
 const unsigned long MEASUREMENT_DELAY = 600000; // Delay in ms between temp/humidity measures
-const double MIN_HUMIDITY = 295.0; // Minimum humidity in Capacitance that can be reached before watering
 
 // Global variables
-unsigned long last_measurement;
-double humidity, temperature;
+unsigned long last_measurement, rgb_backlight;
 bool manual_mode;
 String status_message;
-unsigned long rgb_backlight = 0xffffff; // White
+int temperature, humidity, min_humidity;
 
 // Library objects
 SerLCD lcd; // Default I2C address is 0x72
@@ -40,11 +39,11 @@ bool checkTempHum() {
   sensor.getTemperature();
   while (sensor.isBusy()) { delay(50); }
   humidity = sensor.getCapacitance(); // In Capacitance
-  temperature = sensor.getTemperature() / 10.0; // In Celsius   
+  temperature = (sensor.getTemperature() + 5) / 10; // In Celsius with proper rounding
   last_measurement = millis();
 
   // Return true if humidity is low
-  return humidity < MIN_HUMIDITY;
+  return humidity < min_humidity;
 }
 
 
@@ -107,31 +106,39 @@ void pumpWater() {
 }
 
 
-// Display information on LCD
-void displayLCD() {
-
-  lcd.clear();
-  lcd.setFastBacklight(rgb_backlight);
-  
-  // Display temperature and humidity
+// Display temp/hum information on LCD
+void displayTempHum() {
   lcd.setCursor(1, 0);
-  lcd.print(static_cast<int>(temperature));
+  lcd.print(temperature);
   lcd.print(char(223));
   lcd.print("C  ");
-  lcd.print(static_cast<int>(humidity));
+  lcd.print(humidity);
   lcd.print(" HUMI");
+}
 
-  // Display status message
+
+// Display status information on LCD
+void displayStatus() {
+  lcd.setFastBacklight(rgb_backlight);
   lcd.setCursor(0, 1);
   lcd.print(status_message);
 }
 
+void getMinHumidity() {
+  int poten = map(analogRead(POTENTIOMETER_PIN), 0, 1023, 270, 370);
+  if (poten != min_humidity) {
+    min_humidity = poten;
+    status_message = String("HUMIDITE MIN " + String(min_humidity));
+    displayStatus();
+  }
+}
 
 void setup() {
   
   Wire.begin();
 
   // Set pin modes
+  pinMode(POTENTIOMETER_PIN, INPUT);
   pinMode(MANUAL_MODE_BTN, INPUT_PULLUP);
   pinMode(PUMP_PIN, OUTPUT);
   digitalWrite(PUMP_PIN, LOW);
@@ -139,23 +146,24 @@ void setup() {
   // Set auto or manual mode
   manual_mode = digitalRead(MANUAL_MODE_BTN) == LOW;
 
+
+
   // Delay before begin
   delay(1000);
 
   // LCD - Init and splash screen
   lcd.begin(Wire);
   lcd.clear();
-  lcd.print("  ROBO-BONSAI");
-  lcd.setCursor(0, 1);
+  lcd.setCursor(2, 0);
   if (manual_mode) {
-    lcd.print("  MODE MANUEL");
+    lcd.print("MODE MANUEL");
     rgb_backlight = 0x99ccff; // Blue
-    lcd.setFastBacklight(rgb_backlight);
   } else {
-    lcd.print("   MODE AUTO");
+    lcd.print(" MODE AUTO");
     rgb_backlight = 0xccffcc; // Green
-    lcd.setFastBacklight(rgb_backlight);
   }
+  // Get the minimum humidity setting and displays it
+  getMinHumidity();
   
   // I2CSoilMoisture - Init
   sensor.begin();
@@ -172,14 +180,19 @@ void loop() {
  
   // Auto mode loop
   while (checkTempHum() & enoughWater()) { 
-    displayLCD();
+    displayTempHum();
+    displayStatus();
     pumpWater();
     delay(WATERING_DELAY);
   }
 
   // Display temp, humidity and water lvl on LCD
-  displayLCD();
+  displayTempHum();
+  displayStatus();
 
-  // Put on stand-by
-  while ((millis() - last_measurement) < MEASUREMENT_DELAY) { delay(1); }
+  // Put on stand-by - also display min_humidity if it changes
+  while ((millis() - last_measurement) < MEASUREMENT_DELAY) { 
+    getMinHumidity();
+    delay(100);
+  }
 }
