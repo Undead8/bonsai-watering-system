@@ -8,7 +8,7 @@ const unsigned int SONAR_TRIGGER_PIN = 6;
 const unsigned int SONAR_ECHO_PIN = 7;
 const unsigned int MANUAL_MODE_BTN = 4;
 const unsigned int PUMP_PIN = 5;
-const unsigned int POTENTIOMETER_PIN = 21;
+const unsigned int POTENTIOMETER_PIN = A0;
 
 // Customizable constants
 const unsigned int FULL_WATER_LVL = 415; // Sonar ping in uS (57 uS = 1 cm) for full water
@@ -92,7 +92,7 @@ bool enoughWater() {
   } else {
 
     // LCD variables
-    rgb_backlight = 0xffffff; // White
+    rgb_backlight = 0xccffcc; // Green
     return true;
   }
 }
@@ -124,6 +124,8 @@ void displayStatus() {
   lcd.print(status_message);
 }
 
+
+// Get the potentiometer value and convert it to humidity capacitance, then set min_humidity
 void getMinHumidity() {
   int poten = map(analogRead(POTENTIOMETER_PIN), 0, 1023, 270, 370);
   if (poten != min_humidity) {
@@ -132,6 +134,7 @@ void getMinHumidity() {
     displayStatus();
   }
 }
+
 
 void setup() {
   
@@ -145,8 +148,6 @@ void setup() {
 
   // Set auto or manual mode
   manual_mode = digitalRead(MANUAL_MODE_BTN) == LOW;
-
-
 
   // Delay before begin
   delay(1000);
