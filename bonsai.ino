@@ -19,7 +19,7 @@ const unsigned int WATERING_DELAY = 120000; // Duration in ms before watering an
 const unsigned long MEASUREMENT_DELAY = 600000; // Delay in ms between temp/humidity measures
 
 // Global variables
-unsigned long last_measurement, rgb_backlight;
+unsigned long last_measurement, rgb_backlight, poten_adjust;
 bool manual_mode;
 String status_message;
 int temperature, humidity, min_humidity;
@@ -125,14 +125,20 @@ void displayStatus() {
 }
 
 
-// Get the potentiometer value and convert it to humidity capacitance, then set min_humidity
-void getMinHumidity() {
+// Get the potentiometer value and convert it to humidity capacitance, then set min_humidity. 
+bool getMinHumidity() {
   int poten = map(analogRead(POTENTIOMETER_PIN), 0, 1023, 270, 370);
+  
   if (poten != min_humidity) {
     min_humidity = poten;
     status_message = String("HUMIDITE MIN " + String(min_humidity));
     displayStatus();
+    poten_adjust = millis();
+    delay(1);
   }
+
+  // Return true as long as the potentiometer has been adjusted in the last 2 sec.
+  return ((millis() - poten_adjust) < 2000);
 }
 
 
@@ -168,13 +174,13 @@ void setup() {
   
   // I2CSoilMoisture - Init
   sensor.begin();
-
-  // Delay for splash screen
-  delay(2000);
 }
 
 
 void loop() {
+
+  // Adjust the minimum humidity using the potentiometer
+  while (getMinHumidity) { delay(1); }
 
   // Manual mode loop
   while (manual_mode && enoughWater()) { pumpWater(); }
@@ -191,9 +197,6 @@ void loop() {
   displayTempHum();
   displayStatus();
 
-  // Put on stand-by - also display min_humidity if it changes
-  while ((millis() - last_measurement) < MEASUREMENT_DELAY) { 
-    getMinHumidity();
-    delay(100);
-  }
+  // Put on stand-by
+  while ((millis() - last_measurement) < MEASUREMENT_DELAY) { delay(1); }
 }
