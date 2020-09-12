@@ -20,7 +20,6 @@ const unsigned long MEASUREMENT_DELAY = 600000; // Delay in ms between temp/humi
 // Global variables
 unsigned long next_measurement, rgb_backlight, last_poten_adjust;
 bool manual_mode;
-String status_message;
 int temperature, humidity, min_humidity;
 
 // Library objects
@@ -41,6 +40,14 @@ bool checkTempHum() {
   temperature = (sensor.getTemperature() + 5) / 10; // In Celsius with proper rounding
   next_measurement = millis() + MEASUREMENT_DELAY;
 
+  // Display on LCD
+  lcd.setCursor(1, 0);
+  lcd.print(temperature);
+  lcd.print(char(223));
+  lcd.print("C  ");
+  lcd.print(humidity);
+  lcd.print(" HUMI");
+
   // Return true if humidity is low
   return humidity < min_humidity;
 }
@@ -48,6 +55,8 @@ bool checkTempHum() {
 
 // Check if there is enough water
 bool enoughWater() {
+
+  String status_message;
 
   // Ping the distance to the water
   int sonar_ping = sonar.ping();
@@ -94,6 +103,11 @@ bool enoughWater() {
     rgb_backlight = 0xccffcc; // Green
     return true;
   }
+
+  // Display on LCD
+  lcd.setFastBacklight(rgb_backlight);
+  lcd.setCursor(0, 1);
+  lcd.print(status_message);
 }
 
 
@@ -111,29 +125,14 @@ void getMinHumidity() {
   
   if (poten != min_humidity) {
     min_humidity = poten;
-    status_message = String("HUMIDITE MIN " + String(min_humidity));
-    displayStatus();
+    
+    // Display on LCD
+    lcd.setCursor(0, 1);
+    lcd.print(String("HUMIDITE MIN " + String(min_humidity)));
+
+    // Log time
     last_poten_adjust = millis();
   }  
-}
-
-
-// Display temp/hum information on LCD
-void displayTempHum() {
-  lcd.setCursor(1, 0);
-  lcd.print(temperature);
-  lcd.print(char(223));
-  lcd.print("C  ");
-  lcd.print(humidity);
-  lcd.print(" HUMI");
-}
-
-
-// Display status information on LCD
-void displayStatus() {
-  lcd.setFastBacklight(rgb_backlight);
-  lcd.setCursor(0, 1);
-  lcd.print(status_message);
 }
 
 
@@ -159,10 +158,10 @@ void setup() {
   lcd.setCursor(2, 0);
   if (manual_mode) {
     lcd.print("MODE MANUEL");
-    rgb_backlight = 0x99ccff; // Blue
+    lcd.setFastBacklight(0x99ccff); // Blue
   } else {
     lcd.print(" MODE AUTO");
-    rgb_backlight = 0xccffcc; // Green
+    lcd.setFastBacklight(0xccffcc); // Green
   }
     
   // I2CSoilMoisture - Init
@@ -181,13 +180,5 @@ void loop() {
   while ((millis() - last_poten_adjust) < 2000);
  
   // Auto mode - Pump when humidity is below min_humidity
-  if (millis() > next_measurement && checkTempHum() & enoughWater()) { 
-    displayTempHum();
-    displayStatus();
-    pumpWater();
-  }
-
-  // Display temp, humidity and water lvl on LCD
-  displayTempHum();
-  displayStatus();
+  if (millis() > next_measurement && checkTempHum() & enoughWater()) { pumpWater(); }
 }
