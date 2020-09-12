@@ -15,11 +15,10 @@ const unsigned int FULL_WATER_LVL = 415; // Sonar ping in uS (57 uS = 1 cm) for 
 const unsigned int LOW_WATER_LVL = 700; // Sonar ping in uS (57 uS = 1 cm) for low water warning
 const unsigned int NO_WATER_LVL = 770; // Sonar ping in uS (57 uS = 1 cm) for no water
 const unsigned int WATERING_TIME = 15000; // Duration in ms that the pump will be active when watering
-const unsigned int WATERING_DELAY = 120000; // Duration in ms before watering another time
 const unsigned long MEASUREMENT_DELAY = 600000; // Delay in ms between temp/humidity measures
 
 // Global variables
-unsigned long last_measurement, rgb_backlight, poten_adjust;
+unsigned long next_measurement, rgb_backlight, last_poten_adjust;
 bool manual_mode;
 String status_message;
 int temperature, humidity, min_humidity;
@@ -40,7 +39,7 @@ bool checkTempHum() {
   while (sensor.isBusy()) { delay(50); }
   humidity = sensor.getCapacitance(); // In Capacitance
   temperature = (sensor.getTemperature() + 5) / 10; // In Celsius with proper rounding
-  last_measurement = millis();
+  next_measurement = millis() + MEASUREMENT_DELAY;
 
   // Return true if humidity is low
   return humidity < min_humidity;
@@ -106,6 +105,19 @@ void pumpWater() {
 }
 
 
+// Get the potentiometer value and convert it to humidity capacitance, then set min_humidity. 
+void getMinHumidity() {
+  int poten = map(analogRead(POTENTIOMETER_PIN), 0, 1023, 270, 370);
+  
+  if (poten != min_humidity) {
+    min_humidity = poten;
+    status_message = String("HUMIDITE MIN " + String(min_humidity));
+    displayStatus();
+    last_poten_adjust = millis();
+  }  
+}
+
+
 // Display temp/hum information on LCD
 void displayTempHum() {
   lcd.setCursor(1, 0);
@@ -122,23 +134,6 @@ void displayStatus() {
   lcd.setFastBacklight(rgb_backlight);
   lcd.setCursor(0, 1);
   lcd.print(status_message);
-}
-
-
-// Get the potentiometer value and convert it to humidity capacitance, then set min_humidity. 
-bool getMinHumidity() {
-  int poten = map(analogRead(POTENTIOMETER_PIN), 0, 1023, 270, 370);
-  
-  if (poten != min_humidity) {
-    min_humidity = poten;
-    status_message = String("HUMIDITE MIN " + String(min_humidity));
-    displayStatus();
-    poten_adjust = millis();
-    delay(1);
-  }
-
-  // Return true as long as the potentiometer has been adjusted in the last 2 sec.
-  return ((millis() - poten_adjust) < 2000);
 }
 
 
@@ -169,9 +164,7 @@ void setup() {
     lcd.print(" MODE AUTO");
     rgb_backlight = 0xccffcc; // Green
   }
-  // Get the minimum humidity setting and displays it
-  getMinHumidity();
-  
+    
   // I2CSoilMoisture - Init
   sensor.begin();
 }
@@ -179,24 +172,22 @@ void setup() {
 
 void loop() {
 
-  // Adjust the minimum humidity using the potentiometer
-  while (getMinHumidity) { delay(1); }
-
-  // Manual mode loop
+  // Manual mode - Pump continuously
   while (manual_mode && enoughWater()) { pumpWater(); }
+  
+  // Adjust min_humidity using the potentiometer
+  // Keep checking as long as it has not been adjusted for 2 sec
+  do { getMinHumidity(); }
+  while ((millis() - last_poten_adjust) < 2000);
  
-  // Auto mode loop
-  while (checkTempHum() & enoughWater()) { 
+  // Auto mode - Pump when humidity is below min_humidity
+  if (millis() > next_measurement && checkTempHum() & enoughWater()) { 
     displayTempHum();
     displayStatus();
     pumpWater();
-    delay(WATERING_DELAY);
   }
 
   // Display temp, humidity and water lvl on LCD
   displayTempHum();
   displayStatus();
-
-  // Put on stand-by
-  while ((millis() - last_measurement) < MEASUREMENT_DELAY) { delay(1); }
 }
