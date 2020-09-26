@@ -8,22 +8,19 @@ const unsigned int SONAR_TRIGGER_PIN = 6;
 const unsigned int SONAR_ECHO_PIN = 7;
 const unsigned int MANUAL_MODE_BTN = 4;
 const unsigned int PUMP_PIN = 5;
+const unsigned int POTENTIOMETER_PIN = A0;
 
 // Customizable constants
 const unsigned int FULL_WATER_LVL = 415; // Sonar ping in uS (57 uS = 1 cm) for full water
 const unsigned int LOW_WATER_LVL = 700; // Sonar ping in uS (57 uS = 1 cm) for low water warning
 const unsigned int NO_WATER_LVL = 770; // Sonar ping in uS (57 uS = 1 cm) for no water
 const unsigned int WATERING_TIME = 15000; // Duration in ms that the pump will be active when watering
-const unsigned int WATERING_DELAY = 120000; // Duration in ms before watering another time
 const unsigned long MEASUREMENT_DELAY = 600000; // Delay in ms between temp/humidity measures
-const double MIN_HUMIDITY = 325.0; // Minimum humidity in Capacitance that can be reached before watering
 
 // Global variables
-unsigned long last_measurement;
-double humidity, temperature;
+unsigned long next_measurement, rgb_backlight, last_poten_adjust;
 bool manual_mode;
-String status_message;
-unsigned long rgb_backlight = 0xffffff; // White
+int temperature, humidity, min_humidity;
 
 // Library objects
 SerLCD lcd; // Default I2C address is 0x72
@@ -40,16 +37,26 @@ bool checkTempHum() {
   sensor.getTemperature();
   while (sensor.isBusy()) { delay(50); }
   humidity = sensor.getCapacitance(); // In Capacitance
-  temperature = sensor.getTemperature() / 10.0; // In Celsius   
-  last_measurement = millis();
+  temperature = (sensor.getTemperature() + 5) / 10; // In Celsius with proper rounding
+  next_measurement = millis() + MEASUREMENT_DELAY;
+
+  // Display on LCD
+  lcd.setCursor(1, 0);
+  lcd.print(temperature);
+  lcd.print(char(223));
+  lcd.print("C  ");
+  lcd.print(humidity);
+  lcd.print(" HUMI");
 
   // Return true if humidity is low
-  return humidity < MIN_HUMIDITY;
+  return humidity < min_humidity;
 }
 
 
 // Check if there is enough water
 bool enoughWater() {
+
+  String status_message;
 
   // Ping the distance to the water
   int sonar_ping = sonar.ping();
@@ -93,9 +100,14 @@ bool enoughWater() {
   } else {
 
     // LCD variables
-    rgb_backlight = 0xffffff; // White
+    rgb_backlight = 0xccffcc; // Green
     return true;
   }
+
+  // Display on LCD
+  lcd.setFastBacklight(rgb_backlight);
+  lcd.setCursor(0, 1);
+  lcd.print(status_message);
 }
 
 
@@ -107,23 +119,20 @@ void pumpWater() {
 }
 
 
-// Display information on LCD
-void displayLCD() {
-
-  lcd.clear();
-  lcd.setFastBacklight(rgb_backlight);
+// Get the potentiometer value and convert it to humidity capacitance, then set min_humidity. 
+void getMinHumidity() {
+  int poten = map(analogRead(POTENTIOMETER_PIN), 0, 1023, 270, 370);
   
-  // Display temperature and humidity
-  lcd.setCursor(1, 0);
-  lcd.print(static_cast<int>(temperature));
-  lcd.print(char(223));
-  lcd.print("C  ");
-  lcd.print(static_cast<int>(humidity));
-  lcd.print(" HUMI");
+  if (poten != min_humidity) {
+    min_humidity = poten;
+    
+    // Display on LCD
+    lcd.setCursor(0, 1);
+    lcd.print(String("HUMIDITE MIN " + String(min_humidity)));
 
-  // Display status message
-  lcd.setCursor(0, 1);
-  lcd.print(status_message);
+    // Log time
+    last_poten_adjust = millis();
+  }  
 }
 
 
@@ -132,6 +141,7 @@ void setup() {
   Wire.begin();
 
   // Set pin modes
+  pinMode(POTENTIOMETER_PIN, INPUT);
   pinMode(MANUAL_MODE_BTN, INPUT_PULLUP);
   pinMode(PUMP_PIN, OUTPUT);
   digitalWrite(PUMP_PIN, LOW);
@@ -145,41 +155,30 @@ void setup() {
   // LCD - Init and splash screen
   lcd.begin(Wire);
   lcd.clear();
-  lcd.print("  ROBO-BONSAI");
-  lcd.setCursor(0, 1);
+  lcd.setCursor(2, 0);
   if (manual_mode) {
-    lcd.print("  MODE MANUEL");
-    rgb_backlight = 0x99ccff; // Blue
-    lcd.setFastBacklight(rgb_backlight);
+    lcd.print("MODE MANUEL");
+    lcd.setFastBacklight(0x99ccff); // Blue
   } else {
-    lcd.print("   MODE AUTO");
-    rgb_backlight = 0xccffcc; // Green
-    lcd.setFastBacklight(rgb_backlight);
+    lcd.print(" MODE AUTO");
+    lcd.setFastBacklight(0xccffcc); // Green
   }
-  
+    
   // I2CSoilMoisture - Init
   sensor.begin();
-
-  // Delay for splash screen
-  delay(2000);
 }
 
 
 void loop() {
 
-  // Manual mode loop
+  // Manual mode - Pump continuously
   while (manual_mode && enoughWater()) { pumpWater(); }
+  
+  // Adjust min_humidity using the potentiometer
+  // Keep checking as long as it has not been adjusted for 2 sec
+  do { getMinHumidity(); }
+  while ((millis() - last_poten_adjust) < 2000);
  
-  // Auto mode loop
-  while (checkTempHum() & enoughWater()) { 
-    displayLCD();
-    pumpWater();
-    delay(WATERING_DELAY);
-  }
-
-  // Display temp, humidity and water lvl on LCD
-  displayLCD();
-
-  // Put on stand-by
-  while ((millis() - last_measurement) < MEASUREMENT_DELAY) { delay(1); }
+  // Auto mode - Pump when humidity is below min_humidity
+  if (millis() > next_measurement && checkTempHum() & enoughWater()) { pumpWater(); }
 }
