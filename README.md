@@ -13,6 +13,8 @@ There is an auto mode and a manual mode for this system, selected by a sustainin
 
 **Auto Mode:** The system will periodically check the humidity of the soil and the water level. If the humidity falls below a certain level and if there is still water available, it will active the pump for a few seconds, then wait a few minutes before checking the humidity and water level again. It does this continuously.
 
+The minimum humidity level that can be reached before watering can be turned up or down by using a potentiometer.
+
 ## Notes
 - The water level is indicated in percent with both modes and the LCD screens turns yellow and red when there is low and no water respectively.
 - The ultrasonic range finder is located a few cm above the water, pointing the top of the water. It pings the distance with the top of the water. If the distance is high, it means that the water level is low.
