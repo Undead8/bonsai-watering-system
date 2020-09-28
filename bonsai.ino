@@ -56,8 +56,6 @@ bool checkTempHum() {
 // Check if there is enough water
 bool enoughWater() {
 
-  String status_message;
-
   // Ping the distance to the water
   int sonar_ping = sonar.ping();
 
@@ -69,45 +67,45 @@ bool enoughWater() {
 
   // Status message for LCD
   int water_percent = map(min(sonar_ping, NO_WATER_LVL), NO_WATER_LVL, FULL_WATER_LVL, 0, 100);
-  status_message = String("    EAU " + String(water_percent) + "%");
+  String status_message = String("    EAU " + String(water_percent) + "%");
+  lcd.setCursor(0, 1);
 
   // If the distance to the water is large, there is no more water
   if (sonar_ping > NO_WATER_LVL) {
 
-    // LCD variables
-    rgb_backlight = 0xff0000; // Red
+    // Display on LCD
+    lcd.setFastBacklight(0xff0000);// Red
+    lcd.print(status_message);
     
     return false;
     
   // If the distance to the water is medium, water is low
   } else if (sonar_ping > LOW_WATER_LVL) {
 
-    // LCD variables
-    rgb_backlight = 0xffff00; // Yellow
+    // Display on LCD
+    lcd.setFastBacklight(0xffff00); // Yellow
+    lcd.print(status_message);
     
     return true;
 
   // If the sonar returns 0, there is a reading error
   } else if (sonar_ping == 0) {
 
-    // LCD variables
-    rgb_backlight = 0xff00ff; // Pink
-    status_message = "     ERREUR";
-    
+    // Display on LCD
+    lcd.setFastBacklight(0xff00ff); // Pink
+    lcd.print("     ERREUR");
+        
     return false;
 
   // If the distance to the water is low, there is enough water
   } else {
 
-    // LCD variables
-    rgb_backlight = 0xccffcc; // Green
+    // Display on LCD
+    lcd.setFastBacklight(0xccffcc); // Green
+    lcd.print(status_message);
+    
     return true;
   }
-
-  // Display on LCD
-  lcd.setFastBacklight(rgb_backlight);
-  lcd.setCursor(0, 1);
-  lcd.print(status_message);
 }
 
 
