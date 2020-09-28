@@ -1,3 +1,4 @@
+
 #include <Wire.h>
 #include <SerLCD.h> // http://librarymanager/All#SparkFun_SerLCD
 #include <I2CSoilMoistureSensor.h> // https://github.com/Apollon77/I2CSoilMoistureSensor
@@ -18,7 +19,7 @@ const unsigned int WATERING_TIME = 15000; // Duration in ms that the pump will b
 const unsigned long MEASUREMENT_DELAY = 600000; // Delay in ms between temp/humidity measures
 
 // Global variables
-unsigned long next_measurement, rgb_backlight, last_poten_adjust;
+unsigned long next_measurement, last_poten_adjust;
 bool manual_mode;
 int temperature, humidity, min_humidity;
 
