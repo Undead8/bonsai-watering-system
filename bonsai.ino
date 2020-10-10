@@ -42,12 +42,13 @@ bool checkTempHum() {
   next_measurement = millis() + MEASUREMENT_DELAY;
 
   // Display on LCD
-  lcd.setCursor(1, 0);
+  lcd.setCursor(0, 0);
+  lcd.print(" ");
   lcd.print(temperature);
   lcd.print(char(223));
   lcd.print("C  ");
   lcd.print(humidity);
-  lcd.print(" HUMI");
+  lcd.print(" HUMI ");
 
   // Return true if humidity is low
   return humidity < min_humidity;
@@ -68,7 +69,7 @@ bool enoughWater() {
 
   // Status message for LCD
   int water_percent = map(min(sonar_ping, NO_WATER_LVL), NO_WATER_LVL, FULL_WATER_LVL, 0, 100);
-  String status_message = String("    EAU " + String(water_percent) + "%");
+  String status_message = String("    EAU " + String(water_percent) + "%      ");
   lcd.setCursor(0, 1);
 
   // If the distance to the water is large, there is no more water
@@ -94,7 +95,7 @@ bool enoughWater() {
 
     // Display on LCD
     lcd.setFastBacklight(0xff00ff); // Pink
-    lcd.print("     ERREUR");
+    lcd.print("     ERREUR     ");
         
     return false;
 
@@ -154,12 +155,12 @@ void setup() {
   // LCD - Init and splash screen
   lcd.begin(Wire);
   lcd.clear();
-  lcd.setCursor(2, 0);
+  lcd.setCursor(0, 0);
   if (manual_mode) {
-    lcd.print("MODE MANUEL");
+    lcd.print("  MODE MANUEL   ");
     lcd.setFastBacklight(0x99ccff); // Blue
   } else {
-    lcd.print(" MODE AUTO");
+    lcd.print("   MODE AUTO    ");
     lcd.setFastBacklight(0xccffcc); // Green
   }
     
